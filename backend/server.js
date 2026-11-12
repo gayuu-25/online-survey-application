@@ -1,95 +1,82 @@
 
-const questionList = [
-    "How satisfied are you with the teaching quality?",
-    "Are the classroom facilities good?",
-    "How would you rate the library facilities?",
-    "Are you satisfied with the college website?",
-    "How helpful are the laboratory facilities?",
-    "Is the course content useful?",
-    "How satisfied are you with the placement support?",
-    "Are extracurricular activities sufficient?",
-    "How is the cleanliness of the campus?",
-    "Would you recommend this institution to others?"
-];
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const path = require("path");
 
-// Select random 5 questions
-const selectedQuestions = [...questionList]
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 5);
-
-// Display questions
-const questionsDiv = document.getElementById("questions");
-
-selectedQuestions.forEach((question, index) => {
-    questionsDiv.innerHTML += `
-        <div class="question">
-            <label>${index + 1}. ${question}</label>
-            <select name="answer${index + 1}" required>
-                <option value="">Select your answer</option>
-                <option value="Excellent">Excellent</option>
-                <option value="Good">Good</option>
-                <option value="Average">Average</option>
-                <option value="Poor">Poor</option>
-            </select>
-        </div>
-    `;
+require("dotenv").config({
+    path: path.join(__dirname, ".env")
 });
 
-// Submit feedback
-document.getElementById("surveyForm")
-    .addEventListener("submit", async function(event) {
+const app = express();
 
-    event.preventDefault();
+app.use(cors());
+app.use(express.json());
 
-    const name = document.getElementById("name").value;
-    const email = document.getElementById("email").value;
-    const department = document.getElementById("department").value;
+// MongoDB Connection
+mongoose.connect(process.env.MONGO_URI)
+    .then(() => {
+        console.log("MongoDB Connected Successfully!");
+    })
+    .catch((error) => {
+        console.log("MongoDB Connection Error:", error);
+    });
 
-    const answers = selectedQuestions.map((question, index) => ({
-        question: question,
-        answer: document.querySelector(
-            `[name="answer${index + 1}"]`
-        ).value
-    }));
+// Feedback Schema
+const feedbackSchema = new mongoose.Schema({
+    name: String,
+    email: String,
+    department: String,
+    answers: [
+        {
+            question: String,
+            answer: String
+        }
+    ]
+}, { timestamps: true });
 
-    const message = document.getElementById("message");
+const Feedback = mongoose.model("Feedback", feedbackSchema);
 
+// Test Route
+app.get("/", (req, res) => {
+    res.send("Online Survey Backend is Running Successfully!");
+});
+
+// Submit Feedback
+app.post("/api/feedback", async (req, res) => {
     try {
-        message.textContent = "Submitting feedback...";
+        const { name, email, department, answers } = req.body;
 
-        const response = await fetch(
-            "http://localhost:5000/api/feedback",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    name,
-                    email,
-                    department,
-                    answers
-                })
-            }
-        );
-
-        const result = await response.json();
-
-        if (response.ok) {
-            message.textContent = result.message;
-            message.style.color = "green";
-
-            document.getElementById("surveyForm").reset();
-
-        } else {
-            message.textContent = result.message;
-            message.style.color = "red";
+        if (!name || !email || !department || !answers || answers.length !== 5) {
+            return res.status(400).json({
+                message: "Please fill all fields and answer 5 questions."
+            });
         }
 
-    } catch (error) {
-        message.textContent = "Unable to connect to server!";
-        message.style.color = "red";
+        const feedback = new Feedback({
+            name,
+            email,
+            department,
+            answers
+        });
 
-        console.error(error);
+        await feedback.save();
+
+        res.status(201).json({
+            message: "Feedback submitted successfully!"
+        });
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            message: "Error submitting feedback"
+        });
     }
+});
+
+// Start Server
+const PORT = process.env.PORT || 5000;
+
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
 });
