@@ -50,7 +50,7 @@ document.getElementById("surveyForm").addEventListener("submit", async function(
     const message = document.getElementById("message");
 
     try {
-        const response = await fetch("http://localhost:5000/api/feedback", {
+        const response = await fetch("https://online-survey-application-lo7c.onrender.com/api/feedback", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
