@@ -1,76 +1,82 @@
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+const questionList = [
+    "How satisfied are you with the teaching quality?",
+    "Are the classroom facilities good?",
+    "How would you rate the library facilities?",
+    "Are you satisfied with the college website?",
+    "How helpful are the laboratory facilities?",
+    "Is the course content useful?",
+    "How satisfied are you with the placement support?",
+    "Are extracurricular activities sufficient?",
+    "How is the cleanliness of the campus?",
+    "Would you recommend this institution to others?"
+];
 
-body {
-    font-family: Arial, sans-serif;
-    background: #eef3f9;
-    padding: 30px 15px;
-}
+// Select random 5 questions
+const selectedQuestions = [...questionList]
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 5);
 
-.container {
-    max-width: 650px;
-    margin: auto;
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-}
+const questionsDiv = document.getElementById("questions");
 
-h1 {
-    text-align: center;
-    color: #174a80;
-    margin-bottom: 12px;
-}
+selectedQuestions.forEach((question, index) => {
+    questionsDiv.innerHTML += `
+        <div class="question">
+            <label>${index + 1}. ${question}</label>
+            <select name="answer${index + 1}" required>
+                <option value="">Select your answer</option>
+                <option value="Excellent">Excellent</option>
+                <option value="Good">Good</option>
+                <option value="Average">Average</option>
+                <option value="Poor">Poor</option>
+            </select>
+        </div>
+    `;
+});
 
-p {
-    text-align: center;
-    margin-bottom: 20px;
-    color: #555;
-}
+// Form submission
+document.getElementById("surveyForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
 
-label {
-    display: block;
-    margin: 15px 0 7px;
-    font-weight: bold;
-}
+    const name = document.getElementById("name").value;
+    const email = document.getElementById("email").value;
+    const department = document.getElementById("department").value;
 
-input, select, textarea {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 15px;
-}
+    const answers = selectedQuestions.map((question, index) => ({
+        question: question,
+        answer: document.querySelector(`[name="answer${index + 1}"]`).value
+    }));
 
-.question {
-    margin-top: 22px;
-}
+    const message = document.getElementById("message");
 
-.question select {
-    margin-top: 10px;
-}
+    try {
+        const response = await fetch("https://online-survey-application-lo7c.onrender.com/api/feedback", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                name,
+                email,
+                department,
+                answers
+            })
+        });
 
-button {
-    width: 100%;
-    padding: 14px;
-    margin-top: 25px;
-    background: #174a80;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 16px;
-    cursor: pointer;
-}
+        const result = await response.json();
 
-button:hover {
-    background: #0d3157;
-}
+        if (response.ok) {
+            message.textContent = "Feedback submitted successfully!";
+            message.style.color = "green";
+            document.getElementById("surveyForm").reset();
+        } else {
+            message.textContent = result.message || "Submission failed!";
+            message.style.color = "red";
+        }
 
-#message {
-    margin-top: 15px;
-    font-weight: bold;
-}
+    } catch (error) {
+        message.textContent = "Server connection failed!";
+        message.style.color = "red";
+        console.error(error);
+    }
+});
